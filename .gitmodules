@@ -1,0 +1,6 @@
+[submodule "Software/gmock"]
+	path = Software/gmock
+	url = https://chromium.googlesource.com/external/googlemock
+[submodule "Software/gtest"]
+	path = Software/gtest
+	url = https://chromium.googlesource.com/external/googletest

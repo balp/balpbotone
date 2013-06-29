@@ -18,7 +18,7 @@ else()
 			"${CMAKE_SOURCE_DIR}/cmake/Modules/")
 	message(STATUS "${CMAKE_MODULE_PATH}" )
 	enable_testing()
-	add_subdirectory(gmock-1.6.0)
+	add_subdirectory(gmock)
 	include_directories(${gmock_SOURCE_DIR}/include ${gtest_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/ArduinoMock )
 
 	add_executable(engine_test
