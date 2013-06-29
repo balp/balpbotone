@@ -1,0 +1,623 @@
+From http://andybrown.me.uk/wk/2011/01/15/the-standard-template-library-stl-for-avr-with-c-streams/
+
+
+Yes you did read that correctly, this post will present a port of the Standard Template Library, or STL as it’s more commonly known, to the AVR microcontrollers.
+Introduction
+The STL has been around forever in computing terms with copyright notices appearing in the source code as far back as 1994 and is tried and trusted by C++ programmers the world over. These days most of the STL is a part of the Standard C++ library that ships with full-size C++ compilers.
+Which version?
+I chose the SGI STL, released in 2000. Other versions that I considered were the GNU STL that ships built in to libstdc++ with gcc. This version was too well woven into the libstdc++ build to be easily extracted.
+The other version I looked at was uSTL. This one promised to eliminate the gcc bloat and so it had potential. However I found that on the AVR platform, using the example on the uSTL webpage the code generated was 70% larger than that produced by the SGI STL so I feel somewhat justified in my choice.
+Installation and configuration
+The STL consists only of header files with all the source code inline. Simply download the zip file from my downloads page and unzip to a folder on your hard disk.
+Users of the Arduino IDE should be careful to get the correct version. If you’re on the latest Arduino 1.0 (or more recent) IDE then you’ll need to download at least version 1.1 due to recent changes in the Arduino package detailed below.
+Those of you that use Eclipse or a command line environment simply need to configure their compiler to reference the avr-stl/include directory.
+If you want to use the STL from within the popular Arduino IDE then all you need to do is copy all the files in the avr-stl/include directory into the hardware/tools/avr/avr/include subdirectory of the Arduino installation. For example, on my system I would copy all the header files into here: C:Program Files (x86)\arduino-1.0.1\hardware\tools\avr\avr\include.
+Configuration
+Configuration is optional. You only need to change the defaults if you want to influence the STL memory management strategy.
+All configuration options may be found in avr_config.h. Here’s what the default looks like.
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+namespace avrstl {
+ 
+// default alloc-ahead for vectors. quoting from the SGI docs:
+//
+//   "It is crucial that the amount of growth is proportional to the current capacity(),
+//    rather than a fixed constant: in the former case inserting a series of elements
+//    into a vector is a linear time operation, and in the latter case it is quadratic."
+//
+// If this advice pertains to you, then uncomment the first line and comment out the second.
+// The default here in avr-land is to assume that memory is scarce.
+ 
+//  template<typename T> size_t AvrVectorAllocAhead(size_t oldSize_) { return 2*oldSize_; }
+  template<typename T> size_t AvrVectorAllocAhead(size_t oldSize_) { return 20+oldSize_; }
+//  template<> size_t AvrVectorAllocAhead<char>(size_t oldSize_) { return 20+oldSize_; }     // sample specialization for char
+ 
+// minimum buffer size allocated ahead by a deque
+ 
+  inline size_t AvrDequeBufferSize() { return 20; }
+ 
+// alloc-ahead additional memory increment for strings. The default SGI implementation will add
+// the old size, doubling memory each time. We don't have memory to burn, so add 20 types each time
+ 
+  template<typename T> size_t AvrStringAllocAheadIncrement(size_t oldSize_) { return 20; }
+}
+The first section shows how you can influence how many places a vector allocates-ahead so that it has storage in the bank ready for future allocation requests. The default allocates 20 places ahead. I have shown some commented out examples of how to change this strategy both for all vectors and just for vectors that contain a particular type (char in this example).
+The second and third sections show how you can control the allocate-ahead strategy for deque’s and strings. Like vectors the default is to be conservative with memory use.
+Stream support
+The SGI STL is quite pure in that it does not attempt to supply a streams implementation itself, instead relying on its presence in the environment. avr-libc does not provide streams, so I have provided it via a port of the streams part of the uClibc++ project. Specifically, you get:
+ostream, istream, iostream base classes
+The istringstream and ostringstream string streams
+Stream iterators
+Plus some bonuses if you’re a user of the Arduino platform:
+ohserialstream, ihserialstream, iohserialstream for reading and writing from and to the hardware serial ports on the Arduino. These streams wrap an instance of the HardwareSerial class.
+olcdstream for writing to an LCD character display (wraps an instance of LiquidCrystal).
+Memory considerations
+No discussion of a microcontroller STL port is complete without taking into account memory considerations. Firstly, flash memory. Your flash usage is going to depend on the templates that you use because templates take up no space until they are declared.
+If all you need are the most popular templates such as strings and vectors then even a 16K microcontroller may be enough. If you really go to town on the containers then even a 32K controller is going to start feeling tight. Heavy users would be wise to choose an ATmega1280 (Arduino mega).
+Secondly, SRAM. Again, this depends on your usage. I have made modifications (that you can customise) to ensure that the growth policy of the popular vector and string classes is suitable for 2K controllers. The complex containers such as maps and sets use a memory-hungry backing tree to implement their structure. You would be wise to step up to an ATmega1280 if you want to use these with lots of objects.
+I have verified that all the containers are neutral in their use of dynamic memory. That is, if you declare a container, use it as much as you want and then let it go out of scope then your controller’s dynamic memory is returned to exactly the state in which it started. To do this I used the dynamic memory monitoring tools from this post. I encourage you to use these to monitor your own code.
+Operators new and delete
+The STL requires implementations of new, placement new and delete. If your program does not already define them then exactly one of your project .cpp files must do the following.
+
+Recent versions of the Arduino IDE (definitely 1.0 and possibly as early as 0022) have made an attempt to support operators new and delete by supplying their own version of new.cpp that automatically gets included in every IDE build.
+Unfortunately the authors have only done half a job in that they’ve forgotten to include placement new so as yet I can’t entirely get rid of this kludge, but the procedure is now slightly different for Arduino 1.0 users.
+Arduino 1.0
+You will have downloaded avr-stl-1.1.zip and you need to do this:
+1
+#include <pnew.cpp>
+Arduino 0021 and earlier
+You will have downloaded avr-stl-1.0.zip and you need to do this:
+1
+#include <new.cpp>
+That will ensure that the operators are defined. Failure to do this will result in the following compiler error: undefined reference to `operator new(unsigned int, void*)’.
+A summary of what’s ported
+Here is a summary of what you can use from the STL with some sample code. I’m not going to go crazy on the samples here as the web is awash with STL tutorials and samples.
+vector
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+#include <vector>
+ 
+ 
+/*
+ * Test std::vector
+ */
+ 
+struct TestVector {
+ 
+  static void RunTest() {
+ 
+    std::ohserialstream serial(Serial);
+    std::vector<int> vec;
+    std::vector<int>::const_iterator it;
+    int i;
+ 
+    vec.reserve(50);
+    for(i=0;i<50;i++)
+      vec.push_back(i);
+ 
+    for(it=vec.begin();it!=vec.end();it++)
+      serial << *it << std::endl;
+  }
+ 
+};
+Dynamic memory usage for a vector is quite good as there is almost no additional overhead over and above the space required for the objects themselves. I have implemented a default allocate-ahead policy of 20 objects which you can change if you want (see later). If you have a rough idea of how many objects you are going to need then you can greatly cut down on memory resizing by calling the reserve(n) function ahead of time.
+Note that I have also ported the template specialisation of vector for bool, i.e. std::vector<bool>. This is implemented as an array of single bits that is highly efficient in its memory usage.
+string
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+#include <string>
+ 
+ 
+/*
+ * Test std::vector
+ */
+ 
+struct TestString {
+ 
+  static void RunTest() {
+ 
+    std::ohserialstream serial(Serial);
+    std::string str;
+    char c;
+ 
+    for(c='A';c<='Z';c++)
+      str+=c;
+ 
+    serial << str << std::endl;
+  }
+ 
+};
+std::basic_string and its wildly popular typedef std::string are both there in full. The default allocate-ahead policy is for 20 objects but you can customize that for your needs.
+bitset
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+#include <bitset>
+ 
+/*
+ * Test std::bitset
+ */
+ 
+struct TestBitset {
+ 
+  static void RunTest() {
+ 
+    std::ohserialstream serial(Serial);
+ 
+    std::bitset<64> mybits(0);
+ 
+  // set bits 63 and 31 using
+  // different methods
+ 
+    mybits[63]=1;
+    mybits|=0x80000000;
+ 
+    serial << mybits;
+  }
+ 
+};
+std::bitset offers a fixed size set of bits that you can operate on using familar logical operators. This class is very efficient with memory.
+deque, stack, queue, priority_queue
+deque, stack and queue are all ported. Deque is much like a vector but has a higher SRAM overhead and for that reason I prefer vector instead. Stack and queue can be declared to use vector internally instead of the default deque, and the example below shows that.
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+#include <stack>
+#include <vector>
+ 
+/*
+ * Test std::stack
+ */
+ 
+struct TestStack {
+ 
+  static void RunTest() {
+ 
+    std::ohserialstream serial(Serial);
+    std::stack<int,std::vector<int> > stk;
+    int i;
+ 
+    for(i=0;i<20;i++)
+      stk.push(i);
+ 
+    while(!stk.empty()) {
+      serial << stk.top() << ' ';
+      stk.pop();
+    }
+ 
+    serial << std::endl;
+  }
+list
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+#include <list>
+ 
+/*
+ * Test std::list
+ */
+ 
+struct TestList {
+ 
+  static void RunTest() {
+ 
+    std::ohserialstream serial(Serial);
+    std::list<int> lst;
+    std::list<int>::const_iterator it;
+    int i;
+ 
+    for(i=0;i<50;i++)
+      lst.push_back(i);
+ 
+    for(it=lst.begin();it!=lst.end();it++)
+      serial << *it << ' ';
+ 
+    serial << std::endl;
+  }
+ 
+};
+std::list is ported and may be used as expected. The chief advantage of a list over a vector is that modifications made away from the end of the data structure are faster. Memory usage is considerably higher for a list than a vector because of the overhead of maintaining the link structures so I recommend using a vector if you have the choice, despite the fact that a vector performs allocate-ahead and a list does not.
+The std::slist (single linked list) SGI extension to the standard is also ported. You can use it if you like but I have found no advantage over the standard std::list.
+set, multiset, hash_set, hash_multiset
+Here come the heavyweights. set and multiset are standard containers, the hashed equivalents are SGI extensions that don’t maintain sorted order within the backing tree.
+These containers are not too bad on flash consumption but they do have an impact on SRAM. Consider whether you really need them, and if you do then monitor your memory consumption and make your choice of AVR device appropriately.
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+#include <set>
+ 
+/*
+ * Test std::set
+ */
+ 
+struct TestSet {
+ 
+  static void RunTest() {
+ 
+    std::ohserialstream serial(Serial);
+ 
+    std::set<int> s1,s2;
+    int i;
+ 
+    for(i=0;i<10;i++)
+      s1.insert(i);
+ 
+    for(i=5;i<15;i++)
+      s2.insert(i);
+ 
+    std::set_intersection(
+        s1.begin(),s1.end(),
+        s2.begin(),s2.end(),
+        std::ostream_iterator<int>(serial," "));
+ 
+    serial << std::endl;
+  }
+};
+map, multimap, hash_map, hash_multimap
+More heavyweights. Behind the scenes these containers use exactly the same tree structure as the sets and for that reason the same cautions regarding SRAM usage apply.
+map and multimap are standard, the hash equivalents are SGI extensions and may be useful if you don’t need to maintain sorted order.
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+#include <map>
+ 
+ 
+/*
+ * Test std::map
+ */
+ 
+struct TestMap {
+ 
+  static void RunTest() {
+ 
+    std::ohserialstream serial(Serial);
+ 
+    std::map<int,const char *> days;
+    int i;
+ 
+    days[1]="Monday";
+    days[2]="Tuesday";
+    days[3]="Wednesday";
+    days[4]="Thursday";
+    days[5]="Friday";
+    days[6]="Saturday";
+    days[7]="Sunday";
+ 
+    for(i=1;i<7;i++)
+      serial << days[i] << std::endl;
+  }
+};
+Algorithms
+Everything in the <algorithm> and <functional> headers is available. Sorting, searching etc. It’s all there. Have fun!
+Arduino Extras
+I added in a few extras that will make programming against some of the common Arduino classes more natural in an STL/streams environment.
+Hardware serial stream
+This allows you to drop the clunky println() calls and use the more elegant streams. The constructor takes an instance of a HardwareSerial class. Arduino users only have ‘Serial’. Arduino Mega users have Serial1, Serial2, Serial3. I have added std::crlf to the namespace. This will expand to the two character sequence 13,10.
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+#include <HardwareSerial.h>
+#include <serstream>
+#include <iomanip>  // for setprecision()
+#include <sstream>
+ 
+/*
+ * Run some tests on the hardware serial stream
+ */
+ 
+  static void RunTest() {
+ 
+    std::ohserialstream serial(Serial);
+ 
+    serial.begin(9600);
+ 
+    serial << "Hello world" << std::crlf
+           << "Floating point: "
+           << std::setprecision(3) << 3.14159;
+  }
+};
+LiquidCrystal stream
+This allows you to write to an LCD character display using streams.
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+#include <LiquidCrystal.h>
+#include <lcdostream>
+ 
+LiquidCrystal lcd(2,3,4,5,6,7);
+ 
+ 
+/*
+ * Test the LCD output stream
+ */
+ 
+struct TestLcdOstream {
+ 
+  static void RunTest() {
+ 
+    lcd.begin(20,4);
+ 
+    std::olcdstream stream(lcd);
+ 
+    stream << std::clear()
+           << std::move(5,1) << "Hello World";
+  }
+ 
+};
+I have added two functions to the std namespace: clear() clears the LCD screen and move(col,row) moves the cursor to a position on the display. As you can see from the code you still need to declare an instance of LiquidCrystal and call begin() on it before you can use the stream.
+Update: 17th Feb 2012
+There is a bug in the STL <string> class affecting version 1.1 and below of this package. You need to download at least 1.1.1 to fix it.
+The bug is easily reproduced with a simple sketch:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+#include <iterator>
+#include <string>
+ 
+void setup() {
+  std::string str("abc");
+  str.find_first_not_of("a");
+}
+ 
+void loop() {}
+The compiler will spit out a typically cryptic succession of template errors, with the key error being this one:
+dependent-name 'std::basic_string::size_type' is parsed as a non-type,
+but instantiation yields a type c:/program files (x86)/arduino-1.0/
+hardware/tools/avr/lib/gcc/../../avr/include/string:1106: note: 
+say 'typename std::basic_string::size_type' if a type is meant
+Basically the STL was written a long time ago when C++ compilers were a little more forgiving around dependent types inherited from templates. These days they are rightly more strict and you are forced to explicitly say that you mean a type using the typename keyword.
+If you want to fix the bug manually then it’s very easy, the solution is to modify the <string> header file on line 1107 from this:
+1
+2
+3
+4
+5
+6
+7
+// ------------------------------------------------------------
+// Non-inline declarations.
+ 
+template <class _CharT, class _Traits, class _Alloc>
+const typename basic_string<_CharT,_Traits,_Alloc>::size_type
+basic_string<_CharT,_Traits,_Alloc>::npos
+  = (basic_string<_CharT,_Traits,_Alloc>::size_type) -1;
+To this (insert the typename keyword):
+1
+2
+3
+4
+5
+6
+7
+// ------------------------------------------------------------
+// Non-inline declarations.
+ 
+template <class _CharT, class _Traits, class _Alloc>
+const typename basic_string<_CharT,_Traits,_Alloc>::size_type
+basic_string<_CharT,_Traits,_Alloc>::npos
+  = (typename basic_string<_CharT,_Traits,_Alloc>::size_type) -1;
+For background information about why this happens, click here.
