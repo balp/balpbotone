@@ -16,5 +16,5 @@ if [[ ! -d build_target ]];
 then
   mkdir build_target
 fi
-( cd build_target && cmake -DCMAKE_TOOLCHAIN_FILE=/home/balp/src/git/arduino-cmake/cmake/ArduinoToolchain.cmake ../Software && make $* )
+( cd build_target && cmake -DCMAKE_TOOLCHAIN_FILE=../arduino-cmake/cmake/ArduinoToolchain.cmake ../Software && make $* )
 
