@@ -2,6 +2,9 @@
 #define ENGINE_H
 #include "Arduino.h"
 
+#ifdef DEBUG
+#include "debug.h"
+#endif //DEBUG
 class Engine {
     int m_enable;
     int m_one;
@@ -17,6 +20,12 @@ public:
         pinMode(m_two, OUTPUT);
     }
     void setSpeed(int speed, bool reverse) {
+#ifdef DEBUG
+        LOG << "setSpeed( " << speed << ", " << reverse << ")" << std::crlf
+            << m_enable << " = " << speed << std::crlf
+            << m_one << " = !" << reverse << std::crlf
+            << m_two << " = " << reverse << std::crlf;
+#endif //DEBUG
         analogWrite(m_enable, speed);
         digitalWrite(m_one, !reverse);
         digitalWrite(m_two, reverse);

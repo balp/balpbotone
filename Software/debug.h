@@ -9,7 +9,7 @@
 std::ohserialstream serial(Serial);
 #define LOG serial
 #else
-#include <serstream>
+//#include <serstream>
 #include <ostream>
 struct nullstream : std::ostream {
     nullstream() : std::ios(0), std::ostream(0) {}
