@@ -21,7 +21,7 @@ else()
 	message(STATUS "${CMAKE_MODULE_PATH}" )
 	enable_testing()
 	add_subdirectory(gmock)
-	include_directories(${gmock_SOURCE_DIR}/include ${gtest_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/ArduinoMock )
+    include_directories(${gmock_SOURCE_DIR}/include ${gtest_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/ArduinoMock )
 
 	add_executable(engine_test
 		engine.h
@@ -33,12 +33,14 @@ else()
 
     add_custom_command(OUTPUT EngineMock.h
         COMMAND ${gmock_SOURCE_DIR}/scripts/generator/gmock_gen.py ${CMAKE_SOURCE_DIR}/engine.h > EngineMock.h
+        DEPENDS ${CMAKE_SOURCE_DIR}/engine.h
         )
 
     add_executable(driver_test
         driver.h
         engine.h
         EngineMock.h
+        test/driver_test.cpp
 		ArduinoMock/arduino.cpp
         )
 	target_link_libraries(driver_test gtest gmock gmock_main )

@@ -5,11 +5,17 @@
 #ifdef DEBUG
 #include "debug.h"
 #endif //DEBUG
-class Engine {
+class IEngine {
+    public:
+        ~IEngine() {}
+        virtual void setSpeed(int speed, bool reverse) = 0;
+};
+
+class Engine : public IEngine {
     int m_enable;
     int m_one;
     int m_two;
-public:
+    public:
     Engine(int enablepin, int onepin, int twopin) :
         m_enable(enablepin),
         m_one(onepin),
@@ -19,7 +25,10 @@ public:
         pinMode(m_one, OUTPUT);
         pinMode(m_two, OUTPUT);
     }
-    void setSpeed(int speed, bool reverse) {
+
+    virtual ~Engine() {}
+
+    virtual void setSpeed(int speed, bool reverse) {
 #ifdef DEBUG
         LOG << "setSpeed( " << speed << ", " << reverse << ")" << std::crlf
             << m_enable << " = " << speed << std::crlf
