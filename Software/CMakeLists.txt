@@ -46,5 +46,19 @@ else()
 	target_link_libraries(driver_test gtest gmock gmock_main )
     add_test(AllTestsInDriver driver_test  --gtest_color=on --gtest_output=xml)
 
+    add_custom_command(OUTPUT LightSensorMock.h
+        COMMAND ${gmock_SOURCE_DIR}/scripts/generator/gmock_gen.py ${CMAKE_SOURCE_DIR}/lightsensor.h > LightSensorMock.h
+        DEPENDS ${CMAKE_SOURCE_DIR}/lightsensor.h
+        )
+
+    add_executable(lightsensor_test
+        LightSensorMock.h
+        lightsensor.h
+        test/lightsensor_test.cpp
+		ArduinoMock/arduino.cpp
+        )
+	target_link_libraries(lightsensor_test gtest gmock gmock_main )
+    add_test(AllTestsForLightSensor lightsensor_test  --gtest_color=on --gtest_output=xml)
+
 endif()
 

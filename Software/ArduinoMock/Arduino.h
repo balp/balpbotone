@@ -74,6 +74,8 @@ public:
     MOCK_METHOD2(pinMode, void (uint8_t, uint8_t));
     MOCK_METHOD2(analogWrite, void (uint8_t, int));
     MOCK_METHOD2(digitalWrite, void (uint8_t, uint8_t));
+    MOCK_METHOD1(analogRead, int (int));
+    MOCK_METHOD1(delay, void (int));
 };
 ArduinoMock* arduinoMockInstance();
 void releaseArduinoMock();
