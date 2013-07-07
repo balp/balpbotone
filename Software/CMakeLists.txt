@@ -60,5 +60,13 @@ else()
 	target_link_libraries(lightsensor_test gtest gmock gmock_main )
     add_test(AllTestsForLightSensor lightsensor_test  --gtest_color=on --gtest_output=xml)
 
+    add_executable(state_test
+        state.h
+        test/state_test.cpp
+		ArduinoMock/arduino.cpp
+        )
+	target_link_libraries(state_test gtest gmock gmock_main )
+    add_test(AllTestsForState state_test  --gtest_color=on --gtest_output=xml)
+
 endif()
 

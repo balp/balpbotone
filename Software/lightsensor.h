@@ -2,6 +2,7 @@
  *
  */
 #include "Arduino.h"
+#include "debug.h"
 
 
 
@@ -32,11 +33,12 @@ class LightSensor {
             if(value > m_max) {
                 m_max = value;
             }
+            LOG << "Calibrate " << i << " min " << m_min << " max " << m_max << std::endl;
 
             delay(loopdelay);
         }
-        m_min *= 0.95;
-        m_max *= 1.05;
+        m_min *= 0.90;
+        m_max *= 1.10;
     }
 
     int getValue() {
@@ -45,6 +47,7 @@ class LightSensor {
 
     void update() {
         int currentValue = getValue();
+        LOG << "update " << currentValue << std::endl;
         if(currentValue < m_min || currentValue > m_max ) {
             if(m_cb) {
                 m_cb->sensorChanged(currentValue);
