@@ -15,6 +15,11 @@ TEST(TestLightSensorInit, MakeInstance)
 
 class TestLightSensor : public ::testing::Test {
     protected:
+        class MockLightSensorCallback : public LightSensor::LightSensorCallback {
+            public:
+                virtual ~MockLightSensorCallback() {}
+                MOCK_METHOD1(sensorChanged, void(int value));
+        } cb;
         ArduinoMock* arduinoMock;
         TestLightSensor() : arduinoMock(arduinoMockInstance()) {
         }
@@ -54,11 +59,6 @@ TEST_F(TestLightSensor, CalibrateLonger)
 
 TEST_F(TestLightSensor, ChangeDownCallback)
 {
-    class MockLightSensorCallback : public LightSensor::LightSensorCallback {
-        public:
-            virtual ~MockLightSensorCallback() {}
-            MOCK_METHOD1(sensorChanged, void(int value));
-    } cb;
     EXPECT_CALL(*arduinoMock, analogRead(0))
         .Times(5)
         .WillOnce(Return(250))
@@ -73,21 +73,15 @@ TEST_F(TestLightSensor, ChangeDownCallback)
     sensor.update();
 }
 
-
 TEST_F(TestLightSensor, ChangeToSmall)
 {
-    class MockLightSensorCallback : public LightSensor::LightSensorCallback {
-        public:
-            virtual ~MockLightSensorCallback() {}
-            MOCK_METHOD1(sensorChanged, void(int value));
-    } cb;
     EXPECT_CALL(*arduinoMock, analogRead(0))
         .Times(5)
         .WillOnce(Return(250))
         .WillOnce(Return(240))
         .WillOnce(Return(260))
         .WillOnce(Return(250)) 
-        .WillOnce(Return(240)) ;
+        .WillOnce(Return(237)) ;
     EXPECT_CALL(cb, sensorChanged(_)).Times(0);
     EXPECT_CALL(*arduinoMock, delay(10)).Times(4);
     LightSensor sensor(0, &cb);
@@ -97,11 +91,6 @@ TEST_F(TestLightSensor, ChangeToSmall)
 
 TEST_F(TestLightSensor, ChangeUpHigher)
 {
-    class MockLightSensorCallback : public LightSensor::LightSensorCallback {
-        public:
-            virtual ~MockLightSensorCallback() {}
-            MOCK_METHOD1(sensorChanged, void(int value));
-    } cb;
     EXPECT_CALL(*arduinoMock, analogRead(0))
         .Times(5)
         .WillOnce(Return(250))
@@ -118,11 +107,6 @@ TEST_F(TestLightSensor, ChangeUpHigher)
 
 TEST_F(TestLightSensor, CalibrateTo500)
 {
-    class MockLightSensorCallback : public LightSensor::LightSensorCallback {
-        public:
-            virtual ~MockLightSensorCallback() {}
-            MOCK_METHOD1(sensorChanged, void(int value));
-    } cb;
     EXPECT_CALL(*arduinoMock, analogRead(0))
         .Times(5)
         .WillOnce(Return(500))
