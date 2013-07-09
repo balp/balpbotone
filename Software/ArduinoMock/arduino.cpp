@@ -22,7 +22,9 @@ void digitalWrite(uint8_t a, uint8_t b) {
     arduinoMock->digitalWrite(a,b);
 }
 int digitalRead(uint8_t) { return 0; }
-int analogRead(uint8_t) {return 0; }
+int analogRead(uint8_t a) {
+    return arduinoMock->analogRead(a);
+}
 void analogReference(uint8_t mode) {}
 void analogWrite(uint8_t a, int b) {
     arduinoMock->analogWrite(a,b);
@@ -30,7 +32,9 @@ void analogWrite(uint8_t a, int b) {
 
 unsigned long millis(void) {return 0;}
 unsigned long micros(void) {return 0;}
-void delay(unsigned long) {}
+void delay(unsigned long a) {
+    arduinoMock->delay(a);
+}
 void delayMicroseconds(unsigned int us) {}
 unsigned long pulseIn(uint8_t pin, uint8_t state, unsigned long timeout) {return 0;}
 
