@@ -68,5 +68,13 @@ else()
 	target_link_libraries(state_test gtest gmock gmock_main )
     add_test(AllTestsForState state_test  --gtest_color=on --gtest_output=xml)
 
+    add_executable(timer_test
+        timer.h
+        test/timer_test.cpp
+		ArduinoMock/arduino.cpp
+        )
+	target_link_libraries(timer_test gtest gmock gmock_main )
+    add_test(AllTestsForTimer timer_test  --gtest_color=on --gtest_output=xml)
+
 endif()
 

@@ -30,7 +30,9 @@ void analogWrite(uint8_t a, int b) {
     arduinoMock->analogWrite(a,b);
 }
 
-unsigned long millis(void) {return 0;}
+unsigned long millis(void) {
+    return arduinoMock->millis();
+}
 unsigned long micros(void) {return 0;}
 void delay(unsigned long a) {
     arduinoMock->delay(a);
