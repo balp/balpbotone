@@ -109,6 +109,29 @@ class Timer {
             }
         }
 
+        /**
+         * Remove a timer for the handler
+         *
+         * @param callback the callback to be removed.
+         */
+        void removeTimer(CallbackInterface& callback) {
+            TimerInfo* tmp = head;
+            TimerInfo* prev = NULL;
+            while(tmp) {
+                if(&(tmp->callback) == &(callback)) {
+                    if(prev) {
+                        prev->next = tmp->next;
+                    } else {
+                        head = tmp->next;
+                    }
+                    delete tmp;
+                    break;
+                }
+                prev = tmp;
+                tmp = tmp->next;
+            }
+        }
+
     private:
         void insertTimer(TimerInfo* info) {
             if(! head) { // No events queued

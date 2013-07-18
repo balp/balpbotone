@@ -24,21 +24,31 @@ class LightSensor {
      */
     LightSensor(int pin, LightSensorCallback* cb) : m_min(1024), m_max(0), m_pin(pin), m_cb(cb) { };
 
+    void setCallbackInterface(LightSensorCallback* cb) {
+        m_cb = cb;
+    }
+
     void calibrate(int loops, int loopdelay) {
         for(int i = 0 ; i < loops; ++i) {
-            int value = analogRead(m_pin);
-            if(value < m_min) {
-                m_min = value;
-            }
-            if(value > m_max) {
-                m_max = value;
-            }
-            LOG << "Calibrate " << i << " min " << m_min << " max " << m_max << std::endl;
-
+            takeCalibration();
             delay(loopdelay);
         }
+        endCalibration();
+    }
+    void endCalibration() {
         m_min *= 0.90;
         m_max *= 1.10;
+    }
+
+    void takeCalibration() {
+        int value = analogRead(m_pin);
+        if(value < m_min) {
+            m_min = value;
+        }
+        if(value > m_max) {
+            m_max = value;
+        }
+        LOG << "Calibrate  min " << m_min << " max " << m_max << std::endl;
     }
 
     int getValue() {

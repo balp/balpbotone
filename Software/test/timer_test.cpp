@@ -64,6 +64,24 @@ TEST_F(TestTimer, RepeatingTimer)
     EXPECT_EQ(100, timer.handleTimeouts());
 }
 
+TEST_F(TestTimer, RemoveRepeatingTimer)
+{
+    MockTimerCallback cb;
+    EXPECT_CALL(*arduinoMock, millis())
+        .Times(3)
+        .WillOnce(Return(1))
+        .WillOnce(Return(2))
+        .WillOnce(Return(101))
+        ;
+    EXPECT_CALL(cb, onTimeout()).Times(1);
+    Timer timer;
+    timer.addTimer(cb, 100, true);
+    EXPECT_EQ(99, timer.handleTimeouts());
+    EXPECT_EQ(100, timer.handleTimeouts());
+    timer.removeTimer(cb);
+    EXPECT_EQ(-1, timer.handleTimeouts());
+}
+
 TEST_F(TestTimer, TwoTimersAfterEachOther)
 {
     MockTimerCallback cb_one;
@@ -84,7 +102,6 @@ TEST_F(TestTimer, TwoTimersAfterEachOther)
     EXPECT_EQ(1, timer.handleTimeouts());
 }
 
-// Keep as design idea, but well it makes no good test
 TEST_F(TestTimer, MainLoop)
 {
     boolean g_exitflag = false;

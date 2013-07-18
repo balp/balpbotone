@@ -27,11 +27,14 @@ class State {
                 virtual void onExit() = 0;
         };
         State(CallbackInterface* cb) : m_cb(cb) {}
+        void setCallbackInterface(CallbackInterface* cb) {
+            m_cb = cb;
+        }
         void enter(void) const {
-            m_cb->onEntry();
+            if(m_cb) m_cb->onEntry();
         }
         void exit(void) const {
-            m_cb->onExit();
+            if(m_cb) m_cb->onExit();
         }
     private:
         CallbackInterface* m_cb;

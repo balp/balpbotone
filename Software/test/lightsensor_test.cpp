@@ -121,3 +121,22 @@ TEST_F(TestLightSensor, CalibrateTo500)
     sensor.update();
 }
 
+TEST_F(TestLightSensor, IndividualCalibrateCalls)
+{
+    EXPECT_CALL(*arduinoMock, analogRead(0))
+        .Times(5)
+        .WillOnce(Return(500))
+        .WillOnce(Return(490))
+        .WillOnce(Return(510))
+        .WillOnce(Return(500)) 
+        .WillOnce(Return(250)) ;
+    EXPECT_CALL(cb, sensorChanged(250)).Times(1);
+    LightSensor sensor(0, &cb);
+    sensor.takeCalibration();
+    sensor.takeCalibration();
+    sensor.takeCalibration();
+    sensor.takeCalibration();
+    sensor.endCalibration();
+    sensor.update();
+}
+
