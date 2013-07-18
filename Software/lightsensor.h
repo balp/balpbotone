@@ -28,6 +28,10 @@ class LightSensor {
         m_cb = cb;
     }
 
+    void resetCalibration() {
+        m_min = 1024;
+        m_max = 0;
+    }
     void calibrate(int loops, int loopdelay) {
         for(int i = 0 ; i < loops; ++i) {
             takeCalibration();
@@ -36,8 +40,26 @@ class LightSensor {
         endCalibration();
     }
     void endCalibration() {
-        m_min *= 0.90;
-        m_max *= 1.10;
+        endCalibration(0.10);
+    }
+    void endCalibration(float margin) {
+#if __AVR__
+        int span = m_max - m_min;
+        Serial.print("calibration min: ");
+        Serial.print(m_min);
+        Serial.print(" max: ");
+        Serial.print(m_max);
+        Serial.print(" span: ");
+        Serial.print(span);
+#endif
+        m_min *= (1.0 - margin);
+        m_max *= (1.0 + margin);
+#if __AVR__
+        Serial.print(" adjust min: ");
+        Serial.print(m_min);
+        Serial.print(" max: ");
+        Serial.println(m_max);
+#endif
     }
 
     void takeCalibration() {

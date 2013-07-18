@@ -1,7 +1,7 @@
 
 /*
  *    Calibrate: Every 10ms calibrate ligtsensors
- *    When timer reach 5000ms set state Forward
+ *    When timer reach 1000ms set state Forward
  *
  *    Forward: Every 100ms check lightsensors
  *    When sensor trigers, record forward time, set state Reverse
@@ -24,12 +24,17 @@
 
 #include "debug.h"
 
+static int debug = 0;
+static const int speed = 128;
 Timer timerHandler;
 
 State nullState(NULL);
 State calibrateState(NULL);
 State forwardState(NULL);
+State waitReverseState(NULL);
+State waitRotateState(NULL);
 State reverseState(NULL);
+State rotateState(NULL);
 State waitState(NULL);
 StateMachine stateMachine(nullState);
 
@@ -77,15 +82,17 @@ class Calibrate : public State::CallbackInterface {
         virtual void onEntry() {
             Serial.println("Calibrate::onEntry()");
             LOG << "Calibrate::onEntry():" << std::crlf;
-            timerHandler.addTimer(endTimer, 5000, false);
-            timerHandler.addTimer(sensorTimer, 100, true);
+            leftSensor.resetCalibration();
+            rightSensor.resetCalibration();
+            timerHandler.addTimer(endTimer, 1000, false);
+            timerHandler.addTimer(sensorTimer, 10, true);
 
         }
         virtual void onExit() {
             LOG << "Calibrate::onExit():" << std::crlf;
             Serial.println("Calibrate::onExit()");
-            leftSensor.endCalibration();
-            rightSensor.endCalibration();
+            leftSensor.endCalibration(0.15);
+            rightSensor.endCalibration(0.15);
             timerHandler.removeTimer(sensorTimer);
         }
 } calibrateHandler;
@@ -99,7 +106,7 @@ class Forward : public State::CallbackInterface {
                     Serial.print("Forward: ");
                     Serial.print(value);
                     Serial.println(" state change");
-                    stateMachine.setState(reverseState);
+                    stateMachine.setState(waitReverseState);
                 };
         } sensorCallback;
 
@@ -107,10 +114,10 @@ class Forward : public State::CallbackInterface {
             public:
                 virtual ~SensorTimer() {}
                 virtual void onTimeout() {
-                    Serial.println("SensorTimer::onTimeout()");
+                    if(debug) Serial.println("SensorTimer::onTimeout()");
                     leftSensor.update();
                     rightSensor.update();
-                    Serial.println("SensorTimer::onTimeout(): exit");
+                    if(debug) Serial.println("SensorTimer::onTimeout(): exit");
                 }
         } sensorTimer;
         virtual ~Forward() {}
@@ -122,8 +129,8 @@ class Forward : public State::CallbackInterface {
             leftSensor.setCallbackInterface(&sensorCallback);
             rightSensor.setCallbackInterface(&sensorCallback);
             Serial.println("Forward::onEntry(): add timer");
-            timerHandler.addTimer(sensorTimer, 100, true);
-            driver.forward(250);
+            timerHandler.addTimer(sensorTimer, 50, true);
+            driver.forward(speed);
             Serial.println("Forward::onEntry(): done");
         }
         virtual void onExit() {
@@ -145,7 +152,7 @@ class Reverse : public State::CallbackInterface {
             public:
                 virtual ~EndTimer() {}
                 virtual void onTimeout() {
-                    stateMachine.setState(waitState);
+                    stateMachine.setState(waitRotateState);
                 }
         } endTimer;
         virtual ~Reverse() {}
@@ -153,7 +160,7 @@ class Reverse : public State::CallbackInterface {
             Serial.println("Reverse::onEntry()");
             LOG << "Reverse::onEntry():" << std::crlf;
             timerHandler.addTimer(endTimer, forwardHandler.runtime, false);
-            driver.reverse(250);
+            driver.reverse(speed);
         }
         virtual void onExit() {
             LOG << "Reverse::onExit():" << std::crlf;
@@ -163,20 +170,47 @@ class Reverse : public State::CallbackInterface {
 
 } reverseHandler;
 
-class Wait : public State::CallbackInterface {
+class Rotate : public State::CallbackInterface {
     public:
         class EndTimer : public Timer::CallbackInterface {
             public:
                 virtual ~EndTimer() {}
                 virtual void onTimeout() {
-                    stateMachine.setState(forwardState);
+                    stateMachine.setState(waitState);
                 }
         } endTimer;
+        virtual ~Rotate() {}
+        virtual void onEntry() {
+            Serial.println("Rotate::onEntry()");
+            LOG << "Rotate::onEntry():" << std::crlf;
+            timerHandler.addTimer(endTimer, 5000, false);
+            driver.left(speed);
+        }
+        virtual void onExit() {
+            LOG << "Rotate::onExit():" << std::crlf;
+            Serial.println("Rotate::onExit()");
+            driver.stop();
+        }
+
+} rotateHandler;
+
+class Wait : public State::CallbackInterface {
+    public:
+        class EndTimer : public Timer::CallbackInterface {
+            public:
+                EndTimer(State& nextState) : m_nextState(nextState) {}
+                virtual ~EndTimer() {}
+                virtual void onTimeout() {
+                    stateMachine.setState(m_nextState);
+                }
+                State& m_nextState;
+        } endTimer;
+        Wait(State &nextState) : endTimer(nextState) {};
         virtual ~Wait() {}
         virtual void onEntry() {
             LOG << "Wait::onEntry():" << std::crlf;
             Serial.println("Wait::onEntry()");
-            timerHandler.addTimer(endTimer, 5000, false);
+            timerHandler.addTimer(endTimer, 250, false);
             driver.stop();
         }
         virtual void onExit() {
@@ -184,7 +218,10 @@ class Wait : public State::CallbackInterface {
             Serial.println("Wait::onExit()");
         }
 
-} waitHandler;
+};
+Wait reverseWaitHandler(reverseState);
+Wait rotateWaitHandler(rotateState);
+Wait waitHandler(calibrateState);
 
 void setup()
 {
@@ -197,7 +234,10 @@ void setup()
     rsensorcb.m_name = "right";
     calibrateState.setCallbackInterface(&calibrateHandler);
     forwardState.setCallbackInterface(&forwardHandler);
+    waitReverseState.setCallbackInterface(&reverseWaitHandler);
+    waitRotateState.setCallbackInterface(&rotateWaitHandler);
     reverseState.setCallbackInterface(&reverseHandler);
+    rotateState.setCallbackInterface(&rotateHandler);
     waitState.setCallbackInterface(&waitHandler);
 
     stateMachine.setState(calibrateState);
@@ -207,8 +247,8 @@ void setup()
 void loop()
 {
     int timeout = timerHandler.handleTimeouts();
-    Serial.print("loop(): delay ");
-    Serial.println(timeout);
+    if(debug) Serial.print("loop(): delay ");
+    if(debug) Serial.println(timeout);
     if(timeout < 0) {
         timeout = 100;
     }
