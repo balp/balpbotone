@@ -3,6 +3,10 @@
  */
 
 #include "Arduino.h"
+#ifndef __AVR__
+#include <iostream>
+#endif
+static int debug=0;
 /**
  * Yet one more timer class for Arduino.
  *
@@ -69,6 +73,17 @@ class Timer {
          * @param repeating if true the callback will be called every timeout milliseconds.
          */
         void addTimer(CallbackInterface& callback, int timeout, bool repeating) {
+#ifdef __AVR__
+            if(debug) Serial.print("addTimer(");
+            if(debug) Serial.print((unsigned long)&callback);
+            if(debug) Serial.print(", ");
+            if(debug) Serial.print(timeout);
+            if(debug) Serial.print(", ");
+            if(debug) Serial.print(repeating);
+            if(debug) Serial.println(")");
+#else
+            if(debug) std::cerr << "addTimer(" << &callback << "," << timeout << "," << repeating << ")" << std::endl;
+#endif
             TimerInfo* info = new TimerInfo(callback, timeout, repeating);
             insertTimer(info);
         }
@@ -87,26 +102,74 @@ class Timer {
          * @return the number of milliseconds to next timer or -1 if no active timers.
          */
         int handleTimeouts() {
+            int returntime = -1;
+#ifdef __AVR__
+            if(debug) Serial.print("handleTimeouts(");
+            if(debug) Serial.print((unsigned long)head);
+            if(debug) Serial.println(")");
+#else
+            if(debug) std::cerr << "handleTimeouts(): head " << head <<  std::endl;
+#endif
             if(! head) {
                 return -1;
             }
             unsigned long now = millis();
+#ifdef __AVR__
+            if(debug) Serial.print("handleTimeouts(): now ");
+            if(debug) Serial.print(now);
+            if(debug) Serial.print(" ");
+            if(debug) Serial.print(head->when);
+            if(debug) Serial.print(" ");
+            if(debug) Serial.println((unsigned long)head->next);
+#else
+            if(debug) std::cerr << "handleTimeouts(): now " << now << " " << head->when << std::endl;
+#endif
+            TimerInfo* callback = NULL;
             if(now >= head->when) {
-                head->callback.onTimeout();
+                callback = head;
                 TimerInfo* tmp = head;
                 head = head->next;
                 if(tmp->is_repeating) {
                     tmp->when += tmp->repeat_timeout;
+                    if(tmp->when < now) { // We missed a timeout
+                        tmp->when = now + tmp->repeat_timeout;
+                    } 
+                    tmp->next = NULL;
                     insertTimer(tmp);
                 } else {
-                    delete head;
+#ifdef __AVR__
+                    if(debug) Serial.print("handleTimeouts(): delete ");
+                    if(debug) Serial.println((unsigned long)tmp);
+#else
+                    if(debug) std::cerr << "handleTimeouts(): delete " << tmp << std::endl;
+#endif
+                    delete tmp;
                 }
             }
             if(head) {
-                return head->when - now;
+#ifdef __AVR__
+                if(debug) Serial.print("handleTimeouts(): timeout ");
+                if(debug) Serial.print(head->when - now);
+                if(debug) Serial.print(" = ");
+                if(debug) Serial.print(head->when);
+                if(debug) Serial.print(" - ");
+                if(debug) Serial.println(now);
+#endif
+                if (now < head->when) {
+                    returntime =  head->when - now;
+                } else {
+                    returntime =  0;
+                }
             } else {
-                return -1;
+#ifdef __AVR__
+                if(debug) Serial.println("handleTimeouts(): no head -1 ");
+#endif
+
             }
+            if(callback) {
+                callback->callback.onTimeout();
+            }
+            return returntime;
         }
 
         /**
@@ -115,6 +178,13 @@ class Timer {
          * @param callback the callback to be removed.
          */
         void removeTimer(CallbackInterface& callback) {
+#ifdef __AVR__
+            if(debug) Serial.print("removeTimer(");
+            if(debug) Serial.print((unsigned long)&callback);
+            if(debug) Serial.println(")");
+#else
+            if(debug) std::cerr << "removeTimer(" << &callback << ")" << std::endl;
+#endif
             TimerInfo* tmp = head;
             TimerInfo* prev = NULL;
             while(tmp) {
@@ -124,6 +194,9 @@ class Timer {
                     } else {
                         head = tmp->next;
                     }
+#ifndef __AVR__
+                    if(debug) std::cerr << "removeTimer(): delete " << tmp << std::endl;
+#endif
                     delete tmp;
                     break;
                 }
@@ -134,6 +207,17 @@ class Timer {
 
     private:
         void insertTimer(TimerInfo* info) {
+#ifdef __AVR__
+            if(debug) Serial.print("insertTimer( when ");
+            if(debug) Serial.print(info->when);
+            if(debug) Serial.print(", next ");
+            if(debug) Serial.print((unsigned long)info->next);
+            if(debug) Serial.print(", is_repeating ");
+            if(debug) Serial.print(info->is_repeating);
+            if(debug) Serial.println(")");
+#else
+            if(debug) std::cerr << "insertTimer(" << info << ") [" << info->when << "," << info->next << "]" << std::endl;
+#endif
             if(! head) { // No events queued
                 head = info;
             } else {
@@ -159,6 +243,9 @@ class Timer {
                     }
                 }
             }
+#ifndef __AVR__
+            if(debug) std::cerr << "insertTimer(" << info << "): exit" << std::endl;
+#endif
         }
 
 };

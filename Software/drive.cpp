@@ -96,6 +96,9 @@ class Forward : public State::CallbackInterface {
             public:
                 virtual ~SensorCb() {}
                 virtual void sensorChanged(int value) {
+                    Serial.print("Forward: ");
+                    Serial.print(value);
+                    Serial.println(" state change");
                     stateMachine.setState(reverseState);
                 };
         } sensorCallback;
@@ -104,8 +107,10 @@ class Forward : public State::CallbackInterface {
             public:
                 virtual ~SensorTimer() {}
                 virtual void onTimeout() {
+                    Serial.println("SensorTimer::onTimeout()");
                     leftSensor.update();
                     rightSensor.update();
+                    Serial.println("SensorTimer::onTimeout(): exit");
                 }
         } sensorTimer;
         virtual ~Forward() {}
@@ -113,10 +118,13 @@ class Forward : public State::CallbackInterface {
             LOG << "Forward::onEntry():" << std::crlf;
             Serial.println("Forward::onEntry()");
             starttime = millis();
+            Serial.println(starttime);
             leftSensor.setCallbackInterface(&sensorCallback);
             rightSensor.setCallbackInterface(&sensorCallback);
+            Serial.println("Forward::onEntry(): add timer");
             timerHandler.addTimer(sensorTimer, 100, true);
             driver.forward(250);
+            Serial.println("Forward::onEntry(): done");
         }
         virtual void onExit() {
             LOG << "Forward::onExit():" << std::crlf;
@@ -198,7 +206,12 @@ void setup()
 
 void loop()
 {
-    unsigned long timeout = timerHandler.handleTimeouts();
+    int timeout = timerHandler.handleTimeouts();
+    Serial.print("loop(): delay ");
+    Serial.println(timeout);
+    if(timeout < 0) {
+        timeout = 100;
+    }
     delay(timeout);
 }
 

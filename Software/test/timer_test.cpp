@@ -82,6 +82,67 @@ TEST_F(TestTimer, RemoveRepeatingTimer)
     EXPECT_EQ(-1, timer.handleTimeouts());
 }
 
+TEST_F(TestTimer, RemoveAndAddTimer)
+{
+    MockTimerCallback timer_one_cb;
+    MockTimerCallback timer_two_cb;
+    EXPECT_CALL(*arduinoMock, millis())
+        .Times(6)
+        .WillOnce(Return(1))
+        .WillOnce(Return(2))
+        .WillOnce(Return(101))
+        .WillOnce(Return(102))
+        .WillOnce(Return(102))
+        .WillOnce(Return(202))
+        ;
+    EXPECT_CALL(timer_one_cb, onTimeout()).Times(1);
+    EXPECT_CALL(timer_two_cb, onTimeout()).Times(1);
+    Timer timer;
+    timer.addTimer(timer_one_cb, 100, true);
+    EXPECT_EQ(99, timer.handleTimeouts());
+    EXPECT_EQ(100, timer.handleTimeouts());
+    timer.removeTimer(timer_one_cb);
+    EXPECT_EQ(-1, timer.handleTimeouts());
+    timer.addTimer(timer_two_cb, 100, true);
+    EXPECT_EQ(100, timer.handleTimeouts());
+    EXPECT_EQ(100, timer.handleTimeouts());
+}
+TEST_F(TestTimer, RepetingTimerAndOtherTimer)
+{
+    EXPECT_CALL(*arduinoMock, millis())
+        .Times(10)
+        .WillOnce(Return(1))
+        .WillOnce(Return(1))
+        .WillOnce(Return(1))
+        .WillOnce(Return(11))
+        .WillOnce(Return(21))
+        .WillOnce(Return(31))
+        .WillOnce(Return(31))
+        .WillOnce(Return(32))
+        .WillOnce(Return(32))
+        .WillOnce(Return(62))
+        ;
+    MockTimerCallback timer_one_cb;
+    MockTimerCallback timer_two_cb;
+    MockTimerCallback timer_three_cb;
+    EXPECT_CALL(timer_one_cb, onTimeout()).Times(3);
+    EXPECT_CALL(timer_two_cb, onTimeout()).Times(1);
+    EXPECT_CALL(timer_three_cb, onTimeout()).Times(1);
+    Timer timer;
+    timer.addTimer(timer_two_cb, 30, false);
+    timer.addTimer(timer_one_cb, 10, true);
+    EXPECT_EQ(10, timer.handleTimeouts());
+    EXPECT_EQ(10, timer.handleTimeouts());
+    EXPECT_EQ(10, timer.handleTimeouts());
+    EXPECT_EQ(0, timer.handleTimeouts());
+    EXPECT_EQ(10, timer.handleTimeouts());
+    timer.removeTimer(timer_one_cb);
+    timer.addTimer(timer_three_cb, 30, false);
+    EXPECT_EQ(30, timer.handleTimeouts());
+    EXPECT_EQ(-1, timer.handleTimeouts());
+
+}
+
 TEST_F(TestTimer, TwoTimersAfterEachOther)
 {
     MockTimerCallback cb_one;
