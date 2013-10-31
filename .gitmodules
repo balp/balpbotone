@@ -8,4 +8,4 @@
     ignore = dirty
 [submodule "arduino-cmake"]
 	path = arduino-cmake
-	url = https://github.com/queezythegreat/arduino-cmake.git
+	url = https://github.com/balp/arduino-cmake.git
